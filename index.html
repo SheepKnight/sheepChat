@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+
+        <meta charset="utf-8" />
+
+        <title>Socket.io</title>
+
+    </head>
+
+    <body>
+		<div id = "profile"> Se connecter : <textarea rows="1" cols="25" placeholder="Pseudo" id="nickname"></textarea><textarea rows="1" cols="25" placeholder="Mot-de-Passe" id="password"></textarea><input type="button" value="Connect" id="connect" /></div>
+        <div id = "title"><h1>Communication avec socket.io !</h1></div>
+		<textarea id="text" rows="15" cols="50" id="text" readonly></textarea>
+		<textarea rows="2" cols="50" id="textMessage"></textarea>
+		<p><input type="button" value="Envoyer" id="send" /></p>
+		<div id="groups"></div>
+        <script src="/socket.io/socket.io.js"></script>
+		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script>
+			var connected = false;
+			var name;// = prompt('Quel est votre pseudo ?');
+			var pwd;// = prompt('Quel est votre mot de passe ?');
+			var socket = io.connect('http://localhost:8080');
+			var id = 0;
+			var activeGroup = 0;
+			var groupsText = {};
+			
+			function displayProfile(){
+
+				document.getElementById("profile").innerHTML = "Profil de " + name;
+
+			}
+			
+			function displayText(grp){
+			
+				document.getElementById("text").innerHTML = groupsText[grp].txt;
+				document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + "</h1>";
+			
+			}
+			
+			function setGroup(grpId){
+			
+				activeGroup = grpId;
+				displayText(grpId);
+			
+			}
+			
+		
+			//Accès refusé		
+			socket.on('access_denied', function(error) {
+
+				alert("Vous n'avez pas pu vous connecter : " + error);
+
+			})	
+			socket.on('access_granted', function() {
+
+				alert("Vous vous êtes bien connecté");
+				connected = true;
+				socket.emit('refreshGrp');
+				displayProfile();
+
+			})
+			socket.on('setGroups', function(input) {
+
+				var groupsHTML = "";
+				console.log(input);
+				if(input.length == 0){
+				
+					groupsHTML = "Vous n'avez pas de groupe :'("
+				
+				}
+				for (i = 0; i < input.length; i++) { 
+					
+					groupsHTML = groupsHTML + '<input type="image" src="imggrp/?img='+ input[i].pictureName +'"width="100" height="100" alt="'+ input[i].name +'" onclick="setGroup(' + input[i].id +');" />';
+					groupsText[input[i].id] = {txt : "", name : input[i].name};
+					
+				}
+
+				document.getElementById("groups").innerHTML = groupsHTML + '<input type="image" src="img/?img=addGrp.jpg" width="100" height="100" alt="Create Group" onclick="addGroup();" />';
+			})
+			
+			socket.on('recieve', function(input) {
+
+				console.log(input.grp + ", " + input.name +" : "+input.message);
+				
+				groupsText[input.grp].txt = groupsText[input.grp].txt + input.name +" : "+input.message + "\n"
+				
+				if(activeGroup == input.grp){
+				
+					displayText(input.grp);
+				
+				}
+			})
+			
+			//Envoi
+			$('#send').click(function () {
+			
+				var message = $('textarea#textMessage').val();
+				console.log(message);
+				socket.emit('message', {message : message, group : activeGroup});
+
+			})
+
+			//connect
+			
+			$('#connect').click(function () {
+			
+				name = $('textarea#nickname').val();
+				pwd = $('textarea#password').val();
+				$('textarea#password').val("");
+				socket.emit('identify', {name:name, pwd : pwd});
+
+			})
+
+        </script>
+
+    </body>
+
+</html>
