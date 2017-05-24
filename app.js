@@ -105,9 +105,8 @@ io.sockets.on('connection', function (socket) {
 	}
 	
 	socket.on('identify', function (input) {
-		var request = " SELECT * FROM `users` WHERE `password` = '" + input.pwd + "' AND `name` = '"+ input.name + "'";
-		console.log(request);		
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
+		var request = " SELECT * FROM `users` WHERE `password` = " + mySqlClient.escape(input.pwd) + " AND `name` = "+ mySqlClient.escape(input.name);
 		mySqlClient.query(request, function select(errorSQL, results, fields) {
 			if (errorSQL) {
 				console.log(errorSQL);
