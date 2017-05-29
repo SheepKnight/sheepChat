@@ -16,7 +16,8 @@
 		<textarea id="text" rows="15" cols="50" id="text" readonly></textarea>
 		<textarea rows="2" cols="50" id="textMessage"></textarea>
 		<p><input type="button" value="Envoyer" id="send" /></p>
-		<div id="groups"></div>
+		<p><div id="groups"></div></p>
+		<p><div id="addGroup"></p>
         <script src="/socket.io/socket.io.js"></script>
 		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
         <script>
@@ -27,6 +28,30 @@
 			var id = 0;
 			var activeGroup = 0;
 			var groupsText = {};
+			var groups = {};
+			
+			function addGroup(){
+			
+				document.getElementById("addGroup").innerHTML = '<p><textarea rows="1" cols="25" placeholder="Group Name" id="grpName"></textarea></p>\n<p><textarea rows="1" cols="25" placeholder="Group Description" id="grpDescr"></textarea></p>\n<p><input type="button" value="Créer" id="createGrp" onclick="createGroups();"/><input type="button" value="Cancel" id="cancelGrp" onclick="cancelGroups();"/></p>';
+			
+			}
+
+			function createGroups(){
+				
+				console.log("Creation ?");
+				var name = $('textarea#grpName').val();
+				var description = $('textarea#grpDescr').val();
+				console.log({grpName : name, grpDesc : description});
+				socket.emit('createGrp', {grpName : name, grpDesc : description});
+				
+			}
+			
+			function cancelGroups(){
+				
+				console.log("test.");
+				document.getElementById("addGroup").innerHTML = "";
+			
+			}
 			
 			function displayProfile(){
 
@@ -37,7 +62,12 @@
 			function displayText(grp){
 			
 				document.getElementById("text").innerHTML = groupsText[grp].txt;
-				document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + "</h1>";
+				document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + '</h1><input type="button" value="Supprimer" id="deleteGrp" onclick="deleteGroups();"/>';
+			
+			}
+			
+			function deleteGroups(){
+			
 			
 			}
 			
@@ -48,13 +78,12 @@
 			
 			}
 			
-		
 			//Accès refusé		
 			socket.on('access_denied', function(error) {
 
 				alert("Vous n'avez pas pu vous connecter : " + error);
 
-			})	
+			});
 			socket.on('access_granted', function() {
 
 				alert("Vous vous êtes bien connecté");
@@ -62,9 +91,10 @@
 				socket.emit('refreshGrp');
 				displayProfile();
 
-			})
+			});
 			socket.on('setGroups', function(input) {
 
+				cancelGroups();
 				var groupsHTML = "";
 				console.log(input);
 				if(input.length == 0){
@@ -80,7 +110,8 @@
 				}
 
 				document.getElementById("groups").innerHTML = groupsHTML + '<input type="image" src="img/?img=addGrp.jpg" width="100" height="100" alt="Create Group" onclick="addGroup();" />';
-			})
+				groups = input;
+			});
 			
 			socket.on('recieve', function(input) {
 
@@ -93,7 +124,7 @@
 					displayText(input.grp);
 				
 				}
-			})
+			});
 			
 			//Envoi
 			$('#send').click(function () {
@@ -102,7 +133,7 @@
 				console.log(message);
 				socket.emit('message', {message : message, group : activeGroup});
 
-			})
+			});
 
 			//connect
 			
@@ -113,7 +144,7 @@
 				$('textarea#password').val("");
 				socket.emit('identify', {name:name, pwd : pwd});
 
-			})
+			});
 
         </script>
 

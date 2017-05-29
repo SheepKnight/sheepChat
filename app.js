@@ -64,9 +64,12 @@ io.sockets.on('connection', function (socket) {
 		console.log('user disconnected');
 	});
 	
-	socket.on('refreshGrp', function(){
-		var request = "SELECT `groups`.`name`, `groups`.`id`, `picture`.`pictureName` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` = " + socket.idSQL + " INNER JOIN `picture` WHERE `picture`.`id` = `groups`.`pictureId`"
+	socket.on('refreshGrp', refreshGroups);
+	//SELECT group_config.parameter, group_config.value FROM `group_config` WHERE group_config.groupId = 
+	function refreshGroups(){
+		var parameters = {};
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
+		var request = "SELECT `groups`.`name`, `groups`.`id`, `picture`.`pictureName` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` = " + mySqlClient.escape(socket.idSQL) + " INNER JOIN `picture` WHERE `picture`.`id` = `groups`.`pictureId`";
 		mySqlClient.query(request, function select(errorSQL, results, fields) {
 			if (errorSQL) {
 				console.log(errorSQL);
@@ -81,13 +84,34 @@ io.sockets.on('connection', function (socket) {
 				
 				for(i = 0; i < results.length; i++){
 					socket.join("grp"+results[i].id);
+					results[i].parameters = {};
 				}
-				socket.emit('setGroups', results);
 				
+				request = "SELECT `groups`.`id`, `group_config`.`parameter`, `group_config`.`value` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` = " + mySqlClient.escape(socket.idSQL) + " INNER JOIN `group_config` WHERE `group_config`.`id` = `groups`.`id`";
+				mySqlClient.query(request, function select(errorSQL_parameters, results_parameters, fields_parameters) {
+				
+					if (errorSQL) {
+						console.log(errorSQL);
+						deny(errorSQL);
+						return;
+					}else{
+						parameters = results_parameters;
+						//console.log(parameters);
+					
+					}
+					//console.log(parameters);
+				});
+				console.log(parameters);
+				for(i = 0; i < parameters.length; i++){
+					results[parameters[i].id].parameters[parameters[i].parameter] = parameters[i].value;
+				}
+				console.log(parameters);
+				socket.emit('setGroups', results);
+				socket.groups = results;
 			}
 			mySqlClient.end();
 		});
-	});
+	}
 	
 	function deny(error){
 		
@@ -95,6 +119,7 @@ io.sockets.on('connection', function (socket) {
 		console.log("denied.");
 		socket.connected = false;
 	}
+	
 	function grant(input){
 		
 		socket.emit('access_granted');
@@ -104,9 +129,34 @@ io.sockets.on('connection', function (socket) {
 		
 	}
 	
+	socket.on('createGrp', function (input) {
+		
+		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
+		var request = "INSERT INTO `groups`( `name`, `description`, `pictureId`) VALUES (" + mySqlClient.escape(input.grpName) + "," + mySqlClient.escape(input.grpDesc) + "," + 3 + ")";
+		console.log(request);
+		mySqlClient.query(request, function select(errorSQL, results, fields) {
+			if (errorSQL) {
+				console.log(errorSQL);
+			}else{
+				request = "INSERT INTO `users_groups`(`userId`, `groupId`) VALUES (" + socket.idSQL + ", " + results.insertId + " )";
+				mySqlClient.query(request, function select(errorSQL, results, fields) {
+					if (errorSQL) {
+						console.log(errorSQL);
+						return;
+					}
+					else{
+						refreshGroups();
+					}
+				});
+			}
+		mySqlClient.end();
+		});
+		
+	});
+	
 	socket.on('identify', function (input) {
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
-		var request = " SELECT * FROM `users` WHERE `password` = " + mySqlClient.escape(input.pwd) + " AND `name` = "+ mySqlClient.escape(input.name);
+		var request = "SELECT * FROM `users` WHERE `password` = " + mySqlClient.escape(input.pwd) + " AND `name` = "+ mySqlClient.escape(input.name);
 		mySqlClient.query(request, function select(errorSQL, results, fields) {
 			if (errorSQL) {
 				console.log(errorSQL);
