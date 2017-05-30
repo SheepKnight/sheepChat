@@ -55,8 +55,8 @@ var server = http.createServer(function(req, res) {
 // Chargement de socket.io
 
 var io = require('socket.io').listen(server);
+
 io.sockets.on('connection', function (socket) {
-	
 	socket.connected = null;
 	console.log('Un client est connecté !' + socket.id);
 	
@@ -67,7 +67,7 @@ io.sockets.on('connection', function (socket) {
 	socket.on('refreshGrp', refreshGroups);
 	//SELECT group_config.parameter, group_config.value FROM `group_config` WHERE group_config.groupId = 
 	function refreshGroups(){
-		var parameters = {};
+		socket.parameters = {};
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
 		var request = "SELECT `groups`.`name`, `groups`.`id`, `picture`.`pictureName` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` = " + mySqlClient.escape(socket.idSQL) + " INNER JOIN `picture` WHERE `picture`.`id` = `groups`.`pictureId`";
 		mySqlClient.query(request, function select(errorSQL, results, fields) {
@@ -95,22 +95,21 @@ io.sockets.on('connection', function (socket) {
 						deny(errorSQL);
 						return;
 					}else{
-						parameters = results_parameters;
-						//console.log(parameters);
-					
+						refreshGrp2(results, results_parameters);
 					}
-					//console.log(parameters);
 				});
-				console.log(parameters);
-				for(i = 0; i < parameters.length; i++){
-					results[parameters[i].id].parameters[parameters[i].parameter] = parameters[i].value;
-				}
-				console.log(parameters);
-				socket.emit('setGroups', results);
-				socket.groups = results;
+				
 			}
 			mySqlClient.end();
 		});
+	}
+	
+	function refreshGrp2(groups, params){
+		for(i = 0; i < params.length; i++){
+			groups[params[i].id].parameters[params[i].parameter] = params[i].value;
+		}
+		console.log(groups);
+		socket.emit('setGroups', groups);
 	}
 	
 	function deny(error){
@@ -128,6 +127,22 @@ io.sockets.on('connection', function (socket) {
 		socket.connected = true;
 		
 	}
+	
+	socket.on("deleteGroups",function(id){
+		
+		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
+		var request = "SELECT `value` FROM `group_config` WHERE `groupId` = "+ mySqlClient.escape(id) +" AND `parameter` = 'authorId'";
+		mySqlClient.query(request, function select(errorSQL, results, fields) {
+			if (errorSQL) {
+				console.log(errorSQL);
+			}else{
+				if(results.length == 0 && results[0].value == socket.idSQL){
+					//DELETE
+				}
+			}
+		}
+		
+	});
 	
 	socket.on('createGrp', function (input) {
 		
@@ -165,13 +180,12 @@ io.sockets.on('connection', function (socket) {
 			}else if ( results.length == 0 ) {
 				deny("Wrong password");
 			}else{
-			
 				grant(results[0]);
-			
 			}
 			mySqlClient.end();
 		});
 	}); 
+	
 	socket.on('message', function (message) {
 		console.log("Message !"+message.group+message.message)
     	io.sockets.to("grp"+message.group).emit('recieve', {name : socket.pseudo, message : message.message, grp : message.group});

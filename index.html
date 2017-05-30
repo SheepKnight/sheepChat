@@ -62,13 +62,14 @@
 			function displayText(grp){
 			
 				document.getElementById("text").innerHTML = groupsText[grp].txt;
-				document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + '</h1><input type="button" value="Supprimer" id="deleteGrp" onclick="deleteGroups();"/>';
-			
+				if(groupsText[grp].parameters.authorId == id){
+					document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + '</h1><input type="button" value="Supprimer" id="deleteGrp" onclick="deleteGroups('+ grp +');"/>';
+				}
+				
 			}
 			
-			function deleteGroups(){
-			
-			
+			function deleteGroups(id){
+				socket.emit('deleteGroups', id);
 			}
 			
 			function setGroup(grpId){
@@ -105,7 +106,7 @@
 				for (i = 0; i < input.length; i++) { 
 					
 					groupsHTML = groupsHTML + '<input type="image" src="imggrp/?img='+ input[i].pictureName +'"width="100" height="100" alt="'+ input[i].name +'" onclick="setGroup(' + input[i].id +');" />';
-					groupsText[input[i].id] = {txt : "", name : input[i].name};
+					groupsText[input[i].id] = {txt : "", name : input[i].name, parameters : input[i].parameters};
 					
 				}
 
@@ -136,7 +137,6 @@
 			});
 
 			//connect
-			
 			$('#connect').click(function () {
 			
 				name = $('textarea#nickname').val();
