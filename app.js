@@ -95,7 +95,15 @@ io.sockets.on('connection', function (socket) {
 						deny(errorSQL);
 						return;
 					}else{
-						refreshGrp2(results, results_parameters);
+						console.log(results);
+						console.log(results_parameters);
+						for(i = 0; i < results_parameters.length; i++){
+							results[results_parameters[i].id].parameters[results_parameters[i].parameter] = results_parameters[i].value;
+						}
+						
+						console.log(results);
+						socket.emit('setGroups', results);
+						
 					}
 				});
 				
@@ -103,22 +111,12 @@ io.sockets.on('connection', function (socket) {
 			mySqlClient.end();
 		});
 	}
-	
-	function refreshGrp2(groups, params){
-		for(i = 0; i < params.length; i++){
-			groups[params[i].id].parameters[params[i].parameter] = params[i].value;
-		}
-		console.log(groups);
-		socket.emit('setGroups', groups);
-	}
-	
 	function deny(error){
 		
 		socket.emit('access_denied', error);
 		console.log("denied.");
 		socket.connected = false;
 	}
-	
 	function grant(input){
 		
 		socket.emit('access_granted');
@@ -127,29 +125,42 @@ io.sockets.on('connection', function (socket) {
 		socket.connected = true;
 		
 	}
-	
 	socket.on("deleteGroups",function(id){
 		
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
 		var request = "SELECT `value` FROM `group_config` WHERE `groupId` = "+ mySqlClient.escape(id) +" AND `parameter` = 'authorId'";
-		mySqlClient.query(request, function select(errorSQL, results, fields) {
+		mySqlClient.query(request, function select(errorSQL, results, fields){
 			if (errorSQL) {
 				console.log(errorSQL);
 			}else{
 				if(results.length == 0 && results[0].value == socket.idSQL){
-					//DELETE
+					var request = "DELETE FROM `users_groups` WHERE `users_groups`.`groupId` =" + mySqlClient.escape(id);
+					mySqlClient.query(request, function select(errorSQL, results, fields) {
+					
+						if (errorSQL) {
+							console.log(errorSQL);
+						}else{
+							var request = "DELETE FROM `groups` WHERE `id` = " + mySqlClient.escape(id);
+							mySqlClient.query(request, function select(errorSQL, results, fields) {
+								if (errorSQL){
+									console.log(errorSQL);
+								}else{
+									console.log("Group successfully deleted.");
+								}
+							});
+						}
+					});
 				}
 			}
-		}
-		
+			mySqlClient.end();
+		});
 	});
-	
 	socket.on('createGrp', function (input) {
 		
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
 		var request = "INSERT INTO `groups`( `name`, `description`, `pictureId`) VALUES (" + mySqlClient.escape(input.grpName) + "," + mySqlClient.escape(input.grpDesc) + "," + 3 + ")";
 		console.log(request);
-		mySqlClient.query(request, function select(errorSQL, results, fields) {
+		mySqlClient.query(request, function select(errorSQL, results, fields){
 			if (errorSQL) {
 				console.log(errorSQL);
 			}else{
@@ -164,11 +175,9 @@ io.sockets.on('connection', function (socket) {
 					}
 				});
 			}
-		mySqlClient.end();
 		});
 		
-	});
-	
+	});	
 	socket.on('identify', function (input) {
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
 		var request = "SELECT * FROM `users` WHERE `password` = " + mySqlClient.escape(input.pwd) + " AND `name` = "+ mySqlClient.escape(input.name);
@@ -184,8 +193,7 @@ io.sockets.on('connection', function (socket) {
 			}
 			mySqlClient.end();
 		});
-	}); 
-	
+	}); 	
 	socket.on('message', function (message) {
 		console.log("Message !"+message.group+message.message)
     	io.sockets.to("grp"+message.group).emit('recieve', {name : socket.pseudo, message : message.message, grp : message.group});

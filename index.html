@@ -62,8 +62,11 @@
 			function displayText(grp){
 			
 				document.getElementById("text").innerHTML = groupsText[grp].txt;
+				console.log("please ?");
 				if(groupsText[grp].parameters.authorId == id){
 					document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + '</h1><input type="button" value="Supprimer" id="deleteGrp" onclick="deleteGroups('+ grp +');"/>';
+				}else{
+					document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name +"</h1>";
 				}
 				
 			}
