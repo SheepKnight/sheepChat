@@ -25,11 +25,10 @@
 			var name;// = prompt('Quel est votre pseudo ?');
 			var pwd;// = prompt('Quel est votre mot de passe ?');
 			var socket = io.connect('http://localhost:8080');
-			var id = 0;
 			var activeGroup = 0;
 			var groupsText = {};
 			var groups = {};
-			
+			var idSQL;
 			function addGroup(){
 			
 				document.getElementById("addGroup").innerHTML = '<p><textarea rows="1" cols="25" placeholder="Group Name" id="grpName"></textarea></p>\n<p><textarea rows="1" cols="25" placeholder="Group Description" id="grpDescr"></textarea></p>\n<p><input type="button" value="Créer" id="createGrp" onclick="createGroups();"/><input type="button" value="Cancel" id="cancelGrp" onclick="cancelGroups();"/></p>';
@@ -59,11 +58,18 @@
 
 			}
 			
+			function setId(ide){
+			
+				console.log(ide);
+				idSQL = ide;
+				
+			}
+			
 			function displayText(grp){
 			
 				document.getElementById("text").innerHTML = groupsText[grp].txt;
 				console.log("please ?");
-				if(groupsText[grp].parameters.authorId == id){
+				if(groupsText[grp].parameters.authorId == idSQL && groupsText[grp].parameters.authorId != undefined){
 					document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name + '</h1><input type="button" value="Supprimer" id="deleteGrp" onclick="deleteGroups('+ grp +');"/>';
 				}else{
 					document.getElementById("title").innerHTML = "<h1>" + groupsText[grp].name +"</h1>";
@@ -88,11 +94,12 @@
 				alert("Vous n'avez pas pu vous connecter : " + error);
 
 			});
-			socket.on('access_granted', function() {
+			socket.on('access_granted', function(id) {
 
 				alert("Vous vous êtes bien connecté");
 				connected = true;
 				socket.emit('refreshGrp');
+				setId(id)
 				displayProfile();
 
 			});
