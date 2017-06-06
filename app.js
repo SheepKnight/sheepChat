@@ -76,26 +76,21 @@ io.sockets.on('connection', function (socket) {
 				deny(errorSQL);
 				return;
 			}else if ( results.length == 0 ) {
-			
 				//No groups
 				socket.emit('setGroups');
-			
 			}else{
-				
 				for(i = 0; i < results.length; i++){
 					socket.join("grp"+results[i].id);
 					results[i].parameters = {};
 				}
-				
-				request = "SELECT `group_config`.`groupId`, `group_config`.`parameter`, `group_config`.`value` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` = "+ mySqlClient.escape(socket.idSQL) +" INNER JOIN `group_config` WHERE `group_config`.`id` = `groups`.`id`";
+				request = "SELECT `group_config`.`groupId`, `group_config`.`parameter`, `group_config`.`value` FROM `groups` INNER JOIN `users_groups` ON `users_groups`.`groupId` = `groups`.`id` AND `users_groups`.`userId` =  "+ mySqlClient.escape(socket.idSQL) +" INNER JOIN `group_config` WHERE `group_config`.`groupId` = `groups`.`id`";
 				mySqlClient.query(request, function select(errorSQL_parameters, results_parameters, fields_parameters) {
-				
 					if (errorSQL) {
 						console.log(errorSQL);
 						deny(errorSQL);
 						return;
 					}else{
-						console.log(results);
+						//console.log(results);
 						console.log(results_parameters);
 						for(i = 0; i < results_parameters.length; i++){
 							for(j = 0; j < results.length; j++){
@@ -108,7 +103,7 @@ io.sockets.on('connection', function (socket) {
 							//results[results_parameters[i].groupId].parameters[results_parameters[i].parameter] = results_parameters[i].value;
 						}
 						
-						console.log(results);
+						//console.log("result : " + results);
 						socket.emit('setGroups', results);
 						
 					}
@@ -124,7 +119,7 @@ io.sockets.on('connection', function (socket) {
 		console.log("denied.");
 		socket.connected = false;
 	}
-	function grant(input){
+	function grant(input, invitations){
 		
 		socket.emit('access_granted', input.id);
 		socket.pseudo = input.name;
@@ -160,16 +155,12 @@ io.sockets.on('connection', function (socket) {
 						}
 					});
 				}else{
-				
 					console.log("no rights.");
-					
 				}
 			}
-			mySqlClient.end();
 		});
 	});
 	socket.on('createGrp', function (input) {
-		
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
 		var request = "INSERT INTO `groups`( `name`, `description`, `pictureId`) VALUES (" + mySqlClient.escape(input.grpName) + "," + mySqlClient.escape(input.grpDesc) + "," + 3 + ")";
 		console.log(request);
@@ -177,19 +168,26 @@ io.sockets.on('connection', function (socket) {
 			if (errorSQL) {
 				console.log(errorSQL);
 			}else{
-				request = "INSERT INTO `users_groups`(`userId`, `groupId`) VALUES (" + socket.idSQL + ", " + results.insertId + " )";
-				mySqlClient.query(request, function select(errorSQL, results, fields) {
+				var grpId = results.insertId
+				request = "INSERT INTO `users_groups`(`userId`, `groupId`) VALUES (" + socket.idSQL + ", " + grpId + " )";
+				mySqlClient.query(request, function select(errorSQL, results_1, fields) {
 					if (errorSQL) {
 						console.log(errorSQL);
 						return;
 					}
 					else{
-						refreshGroups();
+						var request = 'INSERT INTO `group_config` (`groupId`, `parameter`, `value`) VALUES (' + grpId + ', "authorId", '+ mySqlClient.escape(socket.idSQL) +' ), (' + grpId + ',"msgLastTime","-1")';
+						mySqlClient.query(request, function select(errorSQL, results_2, fields){
+							if (errorSQL) {
+								console.log(errorSQL);
+							}else{
+								refreshGroups();
+							}
+						});
 					}
 				});
 			}
 		});
-		
 	});	
 	socket.on('identify', function (input) {
 		var mySqlClient = mysql.createConnection({host : "localhost", user : "chatClient", password : "PBLyxeMk3FRak3bL", database : "SheepChat"});
